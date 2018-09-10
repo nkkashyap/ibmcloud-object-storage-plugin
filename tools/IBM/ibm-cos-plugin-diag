@@ -46,7 +46,7 @@ spec:
     spec:
       hostNetwork: true
       containers:
-      - image: ambikanair/ibm-cos-diag-tool:v001
+      - image: ambikanair/test-ibm-cos-diag-tool:v028
         securityContext:
           privileged: true
         name: ibm-cos-plugin-diag
@@ -56,23 +56,23 @@ spec:
            fieldRef:
              fieldPath: status.hostIP
         volumeMounts:
-        - mountPath: /host
-          name: root-fs
-        - mountPath: /run/systemd
-          name: host-systemd
         - mountPath: "/var/log/"
           name: s3fs-log
+        - mountPath: /kubelet
+          name: host-kubelet
+          mountPropagation: HostToContainer
+        - mountPath: /binary
+          name: host-binary
       volumes:
-      - name: root-fs
-        hostPath:
-          # directory location on host
-          path: /
-      - name: host-systemd
-        hostPath:
-          path: /run/systemd
       - name: s3fs-log
         hostPath:
           path: /var/log/
+      - name: host-kubelet
+        hostPath:
+          path: /var/lib/kubelet/
+      - name: host-binary
+        hostPath:
+          path: /usr/libexec/kubernetes/
 '''
 #
 ##
