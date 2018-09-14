@@ -46,7 +46,7 @@ spec:
     spec:
       hostNetwork: true
       containers:
-      - image: ambikanair/test-ibm-cos-diag-tool:v028
+      - image: ambikanair/ibm-cos-diag-tool:v003
         securityContext:
           privileged: true
         name: ibm-cos-plugin-diag
@@ -229,23 +229,28 @@ def backupdiagnosticLogs(q):
      while True:
          name = threading.currentThread().getName()
          x = q.get()
-         print "> {0}: Copying diagnostic log from node {1}".format(name, x)
          cmd = "kubectl get pods -o wide | grep ibm-cos-plugin-diag | grep  \"{0}\" |awk '{{print $1}}'".format(x)
          (rc, cmd_out, cmd_err) = cmdHandle.cmd_run(cmd)
          if not cmd_err.strip():
              podname =  cmd_out.strip()
-             cmd = "kubectl cp {0}:/var/log/ibm-cos-plugin-diag.log {1}-ibm-cos-plugin-diag.log".format(podname, x)
+             print "> {0}: Check if diagnostic log is ready for node {1}".format(name, x)
+             cmd = "kubectl exec -it {0}  -- ps | grep check_cos_mount".format(podname)
              (rc, cmd_out, cmd_err) = cmdHandle.cmd_run(cmd)
-             #if not cmd_err.strip():
-             #    cmd ="cat {0}-ibm-cos-plugin-diag.log | grep -e Error".format(x)
-             #    (rc, cmd_out, cmd_err) = cmdHandle.cmd_run(cmd)
-             #    if (not cmd_err.strip()) and cmd_out.strip():
-             #        print cmd_out.strip()
+
+             if rc == 0:
+                 print "> {0}: diagnostic log is not ready for node {1}".format(name, x)
+                 q.put(x)
+             else:
+                 print "> {0}: Copying diagnostic log from node {1}".format(name, x)
+                 cmd = "kubectl cp {0}:/var/log/ibm-cos-plugin-diag.log {1}-ibm-cos-plugin-diag.log".format(podname, x)
+                 (rc, cmd_out, cmd_err) = cmdHandle.cmd_run(cmd)
+             sys.stdout.flush()
          q.task_done()
+
 
 def check_daemonset_state(ds_name):
     attempts = 0
-
+    flag = 0
     cmd = "kubectl get nodes | grep -w \"Ready\" | wc -l"
     (rc, cmd_out, cmd_err) = cmdHandle.cmd_run(cmd)
     nodes_available = cmd_out.strip()
@@ -266,10 +271,14 @@ def check_daemonset_state(ds_name):
             (rc, cmd_out, cmd_err) = cmdHandle.cmd_run(cmd)
             if not cmd_err.strip():
                 print cmd_out.strip()
-            sys.exit(1)
-
+             flag = 1
+             break
         print "> DS: {0}, Desired: {1}, Available: {2} Sleeping 10 seconds".format(ds_name, nodes_available, ds_status_ready)
         time.sleep(10)
+    if flag == 1:
+        print "Deployment of daemonset failed. Cleaning up daemonset now\n"
+        returnVal = cleanup_daemonset("ibm-cos-plugin-diag")
+        sys.exit(returnVal)
 
 def cleanup_daemonset(ds_name):
     print "\n****Deleting daemonset {0}****".format(ds_name)
@@ -278,8 +287,10 @@ def cleanup_daemonset(ds_name):
     (rc, cmd_out, cmd_err) = cmdHandle.cmd_run(cmd)
     if not cmd_err.strip():
         print cmd_out.strip()
+        return 0
     else:
-        sys.exit(1)
+        print "\n****Could not delete daemonset {0}****".format(ds_name)
+        return 1
 
 
 def inspectSC(sc="", prefix=""):
