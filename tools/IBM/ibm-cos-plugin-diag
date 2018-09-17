@@ -17,7 +17,7 @@ import sys
 import threading
 import time
 from Queue import Queue
-import re
+# from threading import Thread
 
 node_list = []
 nodeQdl = Queue(maxsize=0)
@@ -234,12 +234,12 @@ def backupdiagnosticLogs(q):
          (rc, cmd_out, cmd_err) = cmdHandle.cmd_run(cmd)
          if not cmd_err.strip():
              podname =  cmd_out.strip()
-             print "> {0}: Check if diagnostic log is ready for node {1}".format(name, x)
+             #print "> {0}: Check if diagnostic log is ready for node {1}".format(name, x)
              cmd = "kubectl exec  {0}  -- ps | grep check-mount-health".format(podname)
              (rc, cmd_out, cmd_err) = cmdHandle.cmd_run(cmd)
 
              if rc == 0:
-                 print "> {0}: diagnostic log is not ready for node {1}".format(name, x)
+                 #print "> {0}: diagnostic log is not ready for node {1}".format(name, x)
                  q.put(x)
              else:
                  print "> {0}: Copying diagnostic log from node {1}".format(name, x)
@@ -476,16 +476,21 @@ def main():
     nodeQdigl.join()
 
     print "\n*****Analyzing ibm-cos-plugin-diag logs*****"
-    cmd = "grep DriverBinaryNotFound ./*ibm-cos-plugin-diag.log"
+    cmd = "grep -h DriverBinaryNotFound ./*ibm-cos-plugin-diag.log"
     (rc, cmd_out, cmd_err) = cmdHandle.cmd_run(cmd)
     if cmd_out.strip():
         print "> IBM COS Plug-in driver not installed... " + NOT_OK
         out_list = cmd_out.strip().splitlines()
         for line in out_list:
-            splitString = re.split('(([2][5][0-5]\.)|([2][0-4][0-9]\.)|([0-1]?[0-9]?[0-9]\.)){3}'
-                +'(([2][5][0-5])|([2][0-4][0-9])|([0-1]?[0-9]?[0-9]:))',line)
-            print splitString[-1]
-
+            print line
+    
+    cmd = "grep -h MountPointAccessError ./*ibm-cos-plugin-diag.log"
+    (rc, cmd_out, cmd_err) = cmdHandle.cmd_run(cmd)
+    if cmd_out.strip():
+        print "> Some of the Mount Points are not healthy... " + NOT_OK
+        out_list = cmd_out.strip().splitlines()
+        for line in out_list:
+            print line.split("Error")[0]
     # Collect provisioner log
     if args.pvc or args.provisioner_log:
         print "\n****Collecting provisioner log****"
