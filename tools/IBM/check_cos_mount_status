@@ -13,6 +13,7 @@ import time
 from Queue import Queue
 import datetime
 import subprocess
+import math
 
 class cmdHandler:
             # Internal method to execute a command
@@ -55,7 +56,7 @@ else:
 
 mountList = []
 mountQ = Queue(maxsize=0)
-NUMBER_OF_WORKERS = 10
+NUMBER_OF_WORKERS = 5
 
 def checkMountPointStatus(q):
     while True:
@@ -101,6 +102,11 @@ def  main():
                (datetime.datetime.now(), hostname))
     else:
         print datetime.datetime.now()
+        threadCount = int(math.ceil(int(len(mountList))/float(3)))
+        if threadCount > 5:
+            NUMBER_OF_WORKERS = 5
+        else:
+            NUMBER_OF_WORKERS = threadCount
         for i in range(NUMBER_OF_WORKERS):
             worker = threading.Thread(name="th-"+str(i), target=checkMountPointStatus, args=(mountQ, ))
             worker.setDaemon(True)
