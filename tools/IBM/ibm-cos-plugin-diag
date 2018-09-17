@@ -17,7 +17,7 @@ import sys
 import threading
 import time
 from Queue import Queue
-# from threading import Thread
+import re
 
 node_list = []
 nodeQdl = Queue(maxsize=0)
@@ -47,6 +47,7 @@ spec:
       hostNetwork: true
       containers:
       - image: ambikanair/ibm-cos-diag-tool:v003
+        imagePullPolicy: Always
         securityContext:
           privileged: true
         name: ibm-cos-plugin-diag
@@ -234,7 +235,7 @@ def backupdiagnosticLogs(q):
          if not cmd_err.strip():
              podname =  cmd_out.strip()
              print "> {0}: Check if diagnostic log is ready for node {1}".format(name, x)
-             cmd = "kubectl exec -it {0}  -- ps | grep check_cos_mount".format(podname)
+             cmd = "kubectl exec  {0}  -- ps | grep check-mount-health".format(podname)
              (rc, cmd_out, cmd_err) = cmdHandle.cmd_run(cmd)
 
              if rc == 0:
@@ -246,7 +247,6 @@ def backupdiagnosticLogs(q):
                  (rc, cmd_out, cmd_err) = cmdHandle.cmd_run(cmd)
              sys.stdout.flush()
          q.task_done()
-
 
 def check_daemonset_state(ds_name):
     attempts = 0
@@ -271,8 +271,8 @@ def check_daemonset_state(ds_name):
             (rc, cmd_out, cmd_err) = cmdHandle.cmd_run(cmd)
             if not cmd_err.strip():
                 print cmd_out.strip()
-             flag = 1
-             break
+            flag = 1
+            break
         print "> DS: {0}, Desired: {1}, Available: {2} Sleeping 10 seconds".format(ds_name, nodes_available, ds_status_ready)
         time.sleep(10)
     if flag == 1:
@@ -291,7 +291,6 @@ def cleanup_daemonset(ds_name):
     else:
         print "\n****Could not delete daemonset {0}****".format(ds_name)
         return 1
-
 
 def inspectSC(sc="", prefix=""):
     ret = 1
@@ -483,7 +482,9 @@ def main():
         print "> IBM COS Plug-in driver not installed... " + NOT_OK
         out_list = cmd_out.strip().splitlines()
         for line in out_list:
-            print "> " + line[21:]
+            splitString = re.split('(([2][5][0-5]\.)|([2][0-4][0-9]\.)|([0-1]?[0-9]?[0-9]\.)){3}'
+                +'(([2][5][0-5])|([2][0-4][0-9])|([0-1]?[0-9]?[0-9]:))',line)
+            print splitString[-1]
 
     # Collect provisioner log
     if args.pvc or args.provisioner_log:

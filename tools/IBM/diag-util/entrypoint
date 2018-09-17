@@ -6,6 +6,6 @@
 # * US Government Users Restricted Rights - Use, duplication or
 # * disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
 # ******************************************************************************
-python  check_cos_mount_status
+python check-mount-health
 
 tail -f /dev/null
