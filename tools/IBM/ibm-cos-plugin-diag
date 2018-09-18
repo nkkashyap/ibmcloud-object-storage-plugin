@@ -245,7 +245,6 @@ def backupdiagnosticLogs(q):
                  print "> {0}: Copying diagnostic log from node {1}".format(name, x)
                  cmd = "kubectl cp {0}:/var/log/ibm-cos-plugin-diag.log {1}-ibm-cos-plugin-diag.log".format(podname, x)
                  (rc, cmd_out, cmd_err) = cmdHandle.cmd_run(cmd)
-             sys.stdout.flush()
          q.task_done()
 
 def check_daemonset_state(ds_name):
