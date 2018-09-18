@@ -46,7 +46,7 @@ spec:
     spec:
       hostNetwork: true
       containers:
-      - image: ambikanair/ibm-cos-diag-tool:v003
+      - image: ambikanair/ibm-cos-diag-tool:v002
         imagePullPolicy: Always
         securityContext:
           privileged: true
@@ -490,7 +490,7 @@ def main():
         print "> Some of the Mount Points are not healthy... " + NOT_OK
         out_list = cmd_out.strip().splitlines()
         for line in out_list:
-            print line.split("Error")[0]
+            print line
     # Collect provisioner log
     if args.pvc or args.provisioner_log:
         print "\n****Collecting provisioner log****"
