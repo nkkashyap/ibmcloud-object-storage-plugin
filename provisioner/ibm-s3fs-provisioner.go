@@ -202,7 +202,7 @@ func (p *IBMS3fsProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 		}
 		port := svc.Spec.Ports[0].Port
 		svcIp = svc.Spec.ClusterIP
-		endPoint := "https://" + pvc.CosServiceName + ":" + strconv.Itoa(int(port))
+		endPoint := "https://" + pvc.CosServiceName + "." + pvc.CosServiceNamespace + ".svc.cluster.local:" + strconv.Itoa(int(port))
 		pvc.Endpoint = endPoint
 		err = p.writeCrtFile(pvc.SecretName, pvc.SecretNamespace, pvc.CosServiceName)
 		if err != nil {
