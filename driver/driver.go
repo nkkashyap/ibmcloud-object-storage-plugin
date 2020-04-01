@@ -466,7 +466,7 @@ func (p *S3fsPlugin) mountInternal(mountRequest interfaces.FlexVolumeMountReques
 	}
 	if options.CAbundleB64 != "" {
 		CaBundleKey, err := parser.DecodeBase64(options.CAbundleB64)
-		caFileName = "_ ca.crt"
+		caFileName := "_ ca.crt"
 		if options.CosServiceIP != "" {
 			caFileName = options.CosServiceIP + "_ ca.crt"
 		} else {
