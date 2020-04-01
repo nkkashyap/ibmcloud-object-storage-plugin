@@ -466,11 +466,12 @@ func (p *S3fsPlugin) mountInternal(mountRequest interfaces.FlexVolumeMountReques
 	}
 	if options.CAbundleB64 != "" {
 		CaBundleKey, err := parser.DecodeBase64(options.CAbundleB64)
+		caFileName = "_ ca.crt"
 		if options.CosServiceIP != "" {
-			caFileName := options.CosServiceIP + "_ ca.crt"
+			caFileName = options.CosServiceIP + "_ ca.crt"
 		} else {
 			pvName := filepath.Base(mountRequest.MountDir)
-			caFileName := pvName + "_ ca.crt"
+			caFileName = pvName + "_ ca.crt"
 		}
 		caFile := path.Join(caPath, caFileName)
 		p.Logger.Info(podUID+": CA CERT", zap.String("CA bundle file", caFile))
