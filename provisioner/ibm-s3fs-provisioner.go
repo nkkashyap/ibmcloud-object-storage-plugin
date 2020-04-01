@@ -111,10 +111,6 @@ func parseSecret(secret *v1.Secret, keyName string) (string, error) {
 }
 func (p *IBMS3fsProvisioner) writeCrtFile(secretName, secretNamespace, serviceName string) error {
 	crtFile := path.Join(caBundlePath, serviceName)
-	err := os.Setenv("AWS_CA_BUNDLE", crtFile)
-	if err != nil {
-		return err
-	}
 	secrets, err := p.Client.Core().Secrets(secretNamespace).Get(secretName, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -124,6 +120,10 @@ func (p *IBMS3fsProvisioner) writeCrtFile(secretName, secretNamespace, serviceNa
 		return err
 	}
 	err = writeFile(crtFile, []byte(crtKey), 0600)
+	if err != nil {
+		return err
+	}
+	err = os.Setenv("AWS_CA_BUNDLE", crtFile)
 	if err != nil {
 		return err
 	}
@@ -192,18 +192,20 @@ func (p *IBMS3fsProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 	if pvc.SecretNamespace == "" {
 		pvc.SecretNamespace = options.PVC.Namespace
 	}
+
 	if pvc.CosServiceName != "" {
-		if pvc.CosServiceNamespace == "" {
-			return nil, fmt.Errorf(pvcName + ":" + clusterID + ":cos-service-namespace not provided")
+		// TLS enabled COS Service
+		if pvc.CosServiceNamespace != "" {
+			// Generate the COS Service DNS name
+			svc, err := p.Client.Core().Services(pvc.CosServiceNamespace).Get(pvc.CosServiceName, metav1.GetOptions{})
+			if err != nil {
+				return nil, fmt.Errorf(pvcName+":"+clusterID+":cannot retrieve service details: %v", err)
+			}
+			port := svc.Spec.Ports[0].Port
+			svcIp = svc.Spec.ClusterIP
+			endPoint := "https://" + pvc.CosServiceName + "." + pvc.CosServiceNamespace + ".svc.cluster.local:" + strconv.Itoa(int(port))
+			pvc.Endpoint = endPoint
 		}
-		svc, err := p.Client.Core().Services(pvc.CosServiceNamespace).Get(pvc.CosServiceName, metav1.GetOptions{})
-		if err != nil {
-			return nil, fmt.Errorf(pvcName+":"+clusterID+":cannot retrieve service details: %v", err)
-		}
-		port := svc.Spec.Ports[0].Port
-		svcIp = svc.Spec.ClusterIP
-		endPoint := "https://" + pvc.CosServiceName + "." + pvc.CosServiceNamespace + ".svc.cluster.local:" + strconv.Itoa(int(port))
-		pvc.Endpoint = endPoint
 		err = p.writeCrtFile(pvc.SecretName, pvc.SecretNamespace, pvc.CosServiceName)
 		if err != nil {
 			return nil, fmt.Errorf("cannot create ca crt file: %v", err)
@@ -515,6 +517,7 @@ func (p *IBMS3fsProvisioner) deleteBucket(pvcAnnots *pvcAnnotations, endpointVal
 	contextLogger, _ := logger.GetZapDefaultContextLogger()
 	contextLogger.Info("Deleting the bucket..")
 	if pvcAnnots.CosServiceName != "" {
+		// TLS enabled COS Service
 		err := p.writeCrtFile(pvcAnnots.SecretName, pvcAnnots.SecretNamespace, pvcAnnots.CosServiceName)
 		if err != nil {
 			return fmt.Errorf("cannot create crt file: %v", err)
